@@ -1,0 +1,30 @@
+/**
+  |============================
+  | include css partials with
+  | default @import url()
+  |============================
+*/
+/* Common styles */
+@import 'modern-normalize/modern-normalize.css';
+@import url('./common/fonts.css');
+
+@import url('./common/variables.css');
+@import url('./common/reset.css');
+@import url('./common/base.css');
+@import url('./common/container.css');
+@import url('./common/animations.css');
+@import url('./common/loader.css');
+
+/* Sections style */
+@import url('./partials/header.css');
+@import url('./partials/hero.css');
+@import url('./partials/artists.css');
+@import url('./partials/pagination.css');
+@import url('./partials/about-us');
+@import url('./partials/reviews.css');
+@import url('./partials/artist-detail-modal.css');
+@import url('./partials/footer.css');
+
+/* Components style */
+@import url('./components/artists-filter.css');
+@import url('./components/skeleton-loader.css');

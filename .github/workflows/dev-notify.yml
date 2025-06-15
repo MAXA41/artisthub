@@ -1,0 +1,67 @@
+name: Notify on push to dev
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Skip if merge commit from PR
+        id: skip_check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          if [[ "$COMMIT_MSG" == Merge\ pull\ request* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if commit is a merge commit
+        if: steps.skip_check.outputs.skip == 'false'
+        id: check_merge
+        run: |
+          PARENTS_COUNT=$(git rev-list --count --parents -n 1 HEAD)
+          if [ "$PARENTS_COUNT" -gt 1 ]; then
+            echo "is_merge=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_merge=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get last commit
+        if: steps.skip_check.outputs.skip == 'false'
+        id: commits
+        run: |
+          git log -1 --pretty=format:"%h %an: %s" > commit.txt
+          echo "commits=$(cat commit.txt)" >> $GITHUB_OUTPUT
+
+      - name: Send notification to Discord
+        if:
+          steps.skip_check.outputs.skip == 'false' &&
+          steps.check_merge.outputs.is_merge == 'false'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\": \"Внесені зміни в гілку dev. Будь ласка, перед продовженням роботи збережіть і оновіть свої гілки:\n\`\`\`bash\ngit add .\ngit commit -m \\\"Ваш коміт\\\"\ngit checkout dev\ngit pull origin dev\ngit checkout ваша-гілка\ngit merge dev\n\`\`\`\n\nОстанній коміт:\n\`\`\`\n${{ steps.commits.outputs.commits }}\n\`\`\`\"}" \
+            "$DISCORD_WEBHOOK_URL"
+
+      - name: Send notification to Slack
+        if:
+          steps.skip_check.outputs.skip == 'false' &&
+          steps.check_merge.outputs.is_merge == 'false'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\": \"Внесені зміни в гілку dev. Будь ласка, перед продовженням роботи збережіть і оновіть свої гілки:\n\`\`\`\ngit add .\ngit commit -m \\\"Ваш коміт\\\"\ngit checkout dev\ngit pull origin dev\ngit checkout ваша-гілка\ngit merge dev\n\`\`\`\n\nОстанній коміт:\n\`\`\`\n${{ steps.commits.outputs.commits }}\n\`\`\`\"}" \
+            "$SLACK_WEBHOOK_URL"
